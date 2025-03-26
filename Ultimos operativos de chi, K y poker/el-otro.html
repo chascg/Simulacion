@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es_MX">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Método de Cuadrados Medios y Kolmogorov-Smirnov</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* Estilos personalizados */
+        body {
+            background-color: #a4bfff;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #0d6efd;
+            margin-bottom: 20px;
+        }
+
+        .form-container {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .table {
+            margin-top: 20px;
+        }
+
+        .conclusion {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #e9ecef;
+        }
+
+        .toggle-btn {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1 class="text-center">Método de Cuadrados Medios y Kolmogorov-Smirnov</h1>
+
+        <!-- Formulario -->
+        <div class="form-container">
+            <form id="cuadradosMediosForm">
+                <div class="mb-3">
+                    <label for="semilla" class="form-label">Semilla (X1):</label>
+                    <input type="number" class="form-control" id="semilla" name="semilla" required>
+                </div>
+                <div class="mb-3">
+                    <label for="iteraciones" class="form-label">Número de iteraciones:</label>
+                    <input type="number" class="form-control" id="iteraciones" name="iteraciones" required>
+                </div>
+                <button type="button" class="btn btn-primary w-100" onclick="calcularCuadradosMedios()">Calcular</button>
+            </form>
+        </div>
+
+        <!-- Tabla de resultados -->
+        <h2 class="text-center">Resultados</h2>
+        <button class="btn btn-secondary toggle-btn" onclick="toggleTable('resultadosTable')">Minimizar Tabla de Resultados</button>
+        <div class="table-responsive" id="resultadosTable">
+            <table class="table table-bordered table-striped">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Iteración</th>
+                        <th>X<sub>i</sub></th>
+                        <th>X<sub>i</sub><sup>2</sup></th>
+                        <th>Número Pseudoaleatorio</th>
+                    </tr>
+                </thead>
+                <tbody id="resultados"></tbody>
+            </table>
+        </div>
+
+        <!-- Tabla de Kolmogorov-Smirnov -->
+        <h2 class="text-center">Prueba de Kolmogorov-Smirnov</h2>
+        <button class="btn btn-secondary toggle-btn" onclick="toggleTable('ksTable')">Minimizar Tabla de Kolmogorov-Smirnov</button>
+        <div class="table-responsive" id="ksTable">
+            <table class="table table-bordered table-striped">
+                <thead class="table-dark">
+                    <tr>
+                        <th>i/N</th>
+                        <th>Ri</th>
+                        <th>(i-1)/N</th>
+                        <th>|i/N - Ri|</th>
+                        <th>|Ri - (i-1)/N|</th>
+                        <th>N</th>
+                        <th>D+</th>
+                    </tr>
+                </thead>
+                <tbody id="ksResultados"></tbody>
+            </table>
+        </div>
+
+        <!-- Conclusión de Kolmogorov-Smirnov -->
+        <div id="conclusionKS" class="conclusion"></div>
+    </div>
+
+    <!-- Bootstrap JS y dependencias -->
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
+
+    <script>
+        function toggleTable(tableId) {
+            const table = document.getElementById(tableId);
+            table.style.display = table.style.display === "none" ? "block" : "none";
+        }
+
+        function calcularCuadradosMedios() {
+            const semilla = document.getElementById('semilla').value;
+            const digitos = semilla.length;
+            const iteraciones = parseInt(document.getElementById('iteraciones').value);
+
+            const resultadosTbody = document.getElementById('resultados');
+            resultadosTbody.innerHTML = '';
+
+            let Xi = parseInt(semilla);
+            const numerosPseudoaleatorios = [];
+
+            for (let i = 1; i <= iteraciones; i++) {
+                const XiCuadrado = Xi * Xi;
+                let XiCuadradoStr = XiCuadrado.toString().padStart(2 * digitos, '0');
+                const inicio = Math.floor((XiCuadradoStr.length - digitos) / 2);
+                const nuevoXiStr = XiCuadradoStr.substring(inicio, inicio + digitos);
+                const nuevoXi = parseInt(nuevoXiStr);
+                const numeroPseudoaleatorio = parseFloat('0.' + nuevoXiStr);
+                numerosPseudoaleatorios.push(numeroPseudoaleatorio);
+
+                const row = `<tr><td>${i}</td><td>${Xi}</td><td>${XiCuadradoStr}</td><td>${numeroPseudoaleatorio}</td></tr>`;
+                resultadosTbody.innerHTML += row;
+                Xi = nuevoXi;
+            }
+            calcularKolmogorovSmirnov(numerosPseudoaleatorios, iteraciones);
+        }
+
+        function calcularKolmogorovSmirnov(numeros, n) {
+            numeros.sort((a, b) => a - b);
+            const resultadosTbody = document.getElementById('ksResultados');
+            resultadosTbody.innerHTML = '';
+
+            let Dmas = 0;
+            let Dmenos = 0;
+
+            for (let i = 0; i < n; i++) {
+                const iN = (i + 1) / n;
+                const menosIN = i / n;
+                const Fx = numeros[i];
+
+                const DmasActual = Math.abs(iN - Fx);
+                const DmenosActual = Math.abs(Fx - menosIN);
+                Dmas = Math.max(Dmas, DmasActual);
+                Dmenos = Math.max(Dmenos, DmenosActual);
+
+                const row = `<tr><td>${iN.toFixed(4)}</td><td>${Fx.toFixed(4)}</td><td>${menosIN.toFixed(4)}</td><td>${DmasActual.toFixed(4)}</td><td>${DmenosActual.toFixed(4)}</td><td>${n}</td><td>${Dmas.toFixed(4)}</td></tr>`;
+                resultadosTbody.innerHTML += row;
+            }
+            const conclusion = document.getElementById('conclusionKS');
+            const D = Math.max(Dmas, Dmenos);
+            const valorCritico = 1.36 / Math.sqrt(n);
+            conclusion.innerHTML = D < valorCritico ? `<strong>Conclusión:</strong> Los números se distribuyen uniformemente.` : `<strong>Conclusión:</strong> Los números no se distribuyen uniformemente.`;
+        }
+    </script>
+</body>
+
+</html>
